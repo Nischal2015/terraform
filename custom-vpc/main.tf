@@ -41,7 +41,7 @@ resource "aws_nat_gateway" "nat-gw" {
 resource "aws_subnet" "public-subnet" {
   vpc_id                  = aws_vpc.first-vpc.id
   cidr_block              = "10.0.0.0/24"
-  availability_zone       = "us-east-1a"
+  availability_zone       = var.az-1
   map_public_ip_on_launch = true
 
   tags = {
@@ -52,7 +52,7 @@ resource "aws_subnet" "public-subnet" {
 resource "aws_subnet" "private-subnet" {
   vpc_id            = aws_vpc.first-vpc.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = "us-east-1a"
+  availability_zone = var.az-1
 
   tags = {
     Name = "private-subnet"
@@ -64,7 +64,7 @@ resource "aws_route_table" "public-rt" {
   vpc_id = aws_vpc.first-vpc.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = var.all-ipv4
     gateway_id = aws_internet_gateway.igw.id
   }
 
@@ -77,7 +77,7 @@ resource "aws_route_table" "private-rt" {
   vpc_id = aws_vpc.first-vpc.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = var.all-ipv4
     gateway_id = aws_nat_gateway.nat-gw.id
   }
 
@@ -108,7 +108,7 @@ resource "aws_security_group" "allow" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   ingress {
@@ -116,7 +116,7 @@ resource "aws_security_group" "allow" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   ingress {
@@ -124,14 +124,14 @@ resource "aws_security_group" "allow" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   tags = {
@@ -149,14 +149,14 @@ resource "aws_security_group" "only-ssh-bastion" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   tags = {
@@ -181,7 +181,7 @@ resource "aws_security_group" "private-allow" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all-ipv4]
   }
 
   tags = {
@@ -191,9 +191,9 @@ resource "aws_security_group" "private-allow" {
 
 # 8. Create EC2 instances
 resource "aws_instance" "public-instance" {
-  ami                    = "ami-06a0cd9728546d178"
-  instance_type          = "t2.micro"
-  availability_zone      = "us-east-1a"
+  ami                    = var.ec2-ami
+  instance_type          = var.default-instance
+  availability_zone      = var.az-1
   subnet_id              = aws_subnet.public-subnet.id
   key_name               = "main-key"
   vpc_security_group_ids = [aws_security_group.allow.id]
@@ -212,9 +212,9 @@ resource "aws_instance" "public-instance" {
 }
 
 resource "aws_instance" "bastion-host" {
-  ami                    = "ami-06a0cd9728546d178"
-  instance_type          = "t2.micro"
-  availability_zone      = "us-east-1a"
+  ami                    = var.ec2-ami
+  instance_type          = var.default-instance
+  availability_zone      = var.az-1
   subnet_id              = aws_subnet.public-subnet.id
   key_name               = "main-key"
   vpc_security_group_ids = [aws_security_group.only-ssh-bastion.id]
@@ -225,9 +225,9 @@ resource "aws_instance" "bastion-host" {
 }
 
 resource "aws_instance" "private-instance" {
-  ami                    = "ami-06a0cd9728546d178"
-  instance_type          = "t2.micro"
-  availability_zone      = "us-east-1a"
+  ami                    = var.ec2-ami
+  instance_type          = var.default-instance
+  availability_zone      = var.az-1
   subnet_id              = aws_subnet.private-subnet.id
   key_name               = "private-key"
   vpc_security_group_ids = [aws_security_group.private-allow.id]
